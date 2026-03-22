@@ -69,7 +69,10 @@ app.get('/api/result', async (req, res) => {
     return res.json({ ...result, source: 'live' });
   } catch (err) {
     console.error('Scrape error:', err.message);
-    return res.status(500).json({ error: 'Failed to fetch result. AKTU server may be down. Try again later.' });
+    if (err.message.includes('unreachable') || err.message.includes('down') || err.message.includes('ECONNREFUSED') || err.message.includes('timeout')) {
+      return res.status(503).json({ error: 'AKTU server is currently down. Please try again after some time.' });
+    }
+    return res.status(500).json({ error: 'Failed to fetch result. Please try again.' });
   }
 });
 
