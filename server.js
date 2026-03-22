@@ -1,7 +1,21 @@
 const express = require('express');
 const cors = require('cors');
+const axios = require('axios');
 const NodeCache = require('node-cache');
 const scraper = require('./scraper');
+
+const RECAPTCHA_SECRET = '6Lf9NJMsAAAAAHyG0pHv6s2s9vnLoT7z39yz4-wi';
+
+async function verifyCaptcha(token) {
+  try {
+    const res = await axios.post(
+      `https://www.google.com/recaptcha/api/siteverify?secret=${RECAPTCHA_SECRET}&response=${token}`
+    );
+    return res.data.success;
+  } catch (err) {
+    return false;
+  }
+}
 
 const app = express();
 const cache = new NodeCache({ stdTTL: 86400 }); // cache for 24 hours
@@ -21,6 +35,16 @@ app.get('/api/result', async (req, res) => {
 
   if (!roll || !sem) {
     return res.status(400).json({ error: 'Roll number and semester are required.' });
+  }
+
+  // Verify reCAPTCHA
+  const captcha = req.query.captcha;
+  if (!captcha) {
+    return res.status(400).json({ error: 'CAPTCHA token is required.' });
+  }
+  const isHuman = await verifyCaptcha(captcha);
+  if (!isHuman) {
+    return res.status(403).json({ error: 'CAPTCHA verification failed. Please try again.' });
   }
 
   const rollClean = roll.trim().toUpperCase();
