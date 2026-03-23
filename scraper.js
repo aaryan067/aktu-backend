@@ -3,8 +3,9 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 
 // ─── AKTU ERP BASE URLs ───────────────────────────────────
-const BASE_URL = 'https://aktuoneview.ac.in';
+const BASE_URL = 'https://oneview.aktu.ac.in';
 const RESULT_URL = `${BASE_URL}/WebPages/OneView/Stu_SemResult.aspx`;
+const RESULT_URL_2 = 'https://erp.aktu.ac.in/WebPages/OneView/Stu_SemResult.aspx';
 
 // ─── HEADERS to mimic a real browser ─────────────────────
 const HEADERS = {
@@ -49,7 +50,8 @@ async function fetchResult(rollNo, semester) {
       'ctl00$ContentPlaceHolder1$btnSubmit':  'View Result',
     });
 
-    const postResp = await session.post(RESULT_URL, formData.toString(), {
+    const postURL = getResp.config ? getResp.config.url : RESULT_URL;
+    const postResp = await session.post(postURL, formData.toString(), {
       headers: {
         ...HEADERS,
         'Content-Type': 'application/x-www-form-urlencoded',
