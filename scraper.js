@@ -26,7 +26,7 @@ const HEADERS = {
 };
 
 // ─── MAIN FETCH FUNCTION ──────────────────────────────────
-async function fetchResult(rollNo, semester) {
+async function fetchResult(rollNo) {
   try {
     // Step 1: GET the result page to grab ASP.NET hidden fields
     const session = axios.create({
@@ -103,7 +103,7 @@ async function fetchResult(rollNo, semester) {
     console.log(`✅ POST response status: ${postResp.status}`);
 
     // Step 3: Parse the result HTML
-    return parseResult(postResp.data, rollNo, semester);
+    return parseResult(postResp.data, rollNo);
 
   } catch (err) {
     console.error('fetchResult error:', err.message);
@@ -112,7 +112,7 @@ async function fetchResult(rollNo, semester) {
 }
 
 // ─── PARSE HTML RESULT ────────────────────────────────────
-function parseResult(html, rollNo, semester) {
+function parseResult(html, rollNo) {
   const $ = cheerio.load(html);
 
   // Check if result exists
@@ -151,7 +151,7 @@ function parseResult(html, rollNo, semester) {
     rollNo,
     course,
     college,
-    semester: `Semester ${semester}`,
+    semester: 'All Semesters',
     sgpa,
     cgpa,
     status: status.toUpperCase().includes('PASS') ? 'PASS' : 'FAIL',
