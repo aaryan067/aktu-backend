@@ -31,10 +31,10 @@ app.get('/', (req, res) => {
 // ─── MAIN RESULT ENDPOINT ─────────────────────────────────
 // GET /api/result?roll=2100140520001&sem=3
 app.get('/api/result', async (req, res) => {
-  const { roll, sem } = req.query;
+  const { roll } = req.query;
 
-  if (!roll || !sem) {
-    return res.status(400).json({ error: 'Roll number and semester are required.' });
+  if (!roll) {
+    return res.status(400).json({ error: 'Roll number is required.' });
   }
 
   // Verify reCAPTCHA (optional - skip if not provided for testing)
@@ -47,7 +47,7 @@ app.get('/api/result', async (req, res) => {
   }
 
   const rollClean = roll.trim().toUpperCase();
-  const cacheKey = `${rollClean}_sem${sem}`;
+  const cacheKey = `${rollClean}_all`;
 
   // ── Check cache first ──
   const cached = cache.get(cacheKey);
@@ -59,7 +59,7 @@ app.get('/api/result', async (req, res) => {
   // ── Scrape from AKTU ──
   console.log(`🔍 Scraping AKTU for: ${cacheKey}`);
   try {
-    const result = await scraper.fetchResult(rollClean, sem);
+    const result = await scraper.fetchResult(rollClean);
     if (!result) {
       return res.status(404).json({ error: 'Result not found. Check roll number or semester.' });
     }
