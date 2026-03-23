@@ -3,18 +3,26 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 
 // ─── AKTU ERP BASE URLs ───────────────────────────────────
-const BASE_URL = 'https://oneview.aktu.ac.in';
+const BASE_URL = 'https://erp.aktu.ac.in';
 const RESULT_URL = `${BASE_URL}/WebPages/OneView/Stu_SemResult.aspx`;
-const RESULT_URL_2 = 'https://erp.aktu.ac.in/WebPages/OneView/Stu_SemResult.aspx';
+const RESULT_URL_2 = 'https://oneview.aktu.ac.in/WebPages/OneView/Stu_SemResult.aspx';
 
 // ─── HEADERS to mimic a real browser ─────────────────────
 const HEADERS = {
-  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-  'Accept-Language': 'en-US,en;q=0.5',
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+  'Accept-Language': 'en-IN,en-GB;q=0.9,en-US;q=0.8,en;q=0.7,hi;q=0.6',
   'Accept-Encoding': 'gzip, deflate, br',
   'Connection': 'keep-alive',
   'Upgrade-Insecure-Requests': '1',
+  'Sec-Fetch-Dest': 'document',
+  'Sec-Fetch-Mode': 'navigate',
+  'Sec-Fetch-Site': 'none',
+  'Sec-Fetch-User': '?1',
+  'Cache-Control': 'max-age=0',
+  'sec-ch-ua': '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
+  'sec-ch-ua-mobile': '?0',
+  'sec-ch-ua-platform': '"Windows"',
 };
 
 // ─── MAIN FETCH FUNCTION ──────────────────────────────────
@@ -40,24 +48,59 @@ async function fetchResult(rollNo, semester) {
       throw new Error('Could not load AKTU page — site may be down');
     }
 
-    // Step 2: POST with roll number (no DOB needed here!)
-    const formData = new URLSearchParams({
-      '__VIEWSTATE':          viewState,
-      '__VIEWSTATEGENERATOR': viewStateGen,
-      '__EVENTVALIDATION':    eventValidation,
-      'ctl00$ContentPlaceHolder1$txtRollNo': rollNo,
-      'ctl00$ContentPlaceHolder1$ddlSemester': semester,
-      'ctl00$ContentPlaceHolder1$btnSubmit':  'View Result',
+    // Step 2: Find all form fields dynamically
+    const allInputs = {};
+    $('input[type="hidden"]').each((i, el) => {
+      const name = $(el).attr('name');
+      const value = $(el).val() || '';
+      if (name) allInputs[name] = value;
     });
 
-    const postURL = getResp.config ? getResp.config.url : RESULT_URL;
+    console.log(`📋 Hidden fields found: ${Object.keys(allInputs).join(', ')}`);
+
+    // Find roll number input name
+    const rollInputName = $('input[type="text"]').attr('name') || 
+                          $('input[id*="Roll"]').attr('name') ||
+                          $('input[id*="roll"]').attr('name') ||
+                          'ctl00$ContentPlaceHolder1$txtRollNo';
+
+    // Find semester dropdown name  
+    const semSelectName = $('select').attr('name') ||
+                          $('select[id*="Sem"]').attr('name') ||
+                          'ctl00$ContentPlaceHolder1$ddlSemester';
+
+    // Find submit button name
+    const submitName = $('input[type="submit"]').attr('name') ||
+                       $('input[value="View Result"]').attr('name') ||
+                       'ctl00$ContentPlaceHolder1$btnSubmit';
+
+    const submitValue = $('input[type="submit"]').attr('value') || 'View Result';
+
+    console.log(`🔍 Roll input: ${rollInputName}`);
+    console.log(`🔍 Sem select: ${semSelectName}`);
+    console.log(`🔍 Submit: ${submitName}`);
+
+    // Build form data
+    const formData = new URLSearchParams({
+      ...allInputs,
+      [rollInputName]: rollNo,
+      [semSelectName]: semester,
+      [submitName]: submitValue,
+    });
+
+    const postURL = RESULT_URL;
+    console.log(`📤 Posting to: ${postURL}`);
+
     const postResp = await session.post(postURL, formData.toString(), {
       headers: {
         ...HEADERS,
         'Content-Type': 'application/x-www-form-urlencoded',
         'Referer': RESULT_URL,
+        'Origin': BASE_URL,
       },
     });
+
+    console.log(`✅ POST response status: ${postResp.status}`);
 
     // Step 3: Parse the result HTML
     return parseResult(postResp.data, rollNo, semester);
